@@ -1,0 +1,8 @@
+Task: Implement a basic weather app using the openWeatherMap JSON api that allows the
+user to enter a City name and receive the current weather in that city. Please, treat this like
+a professional product and make sure not to have any shallow path crashes. I am leaving
+the UI design up to you, but I will be using this as a reference for your design abilities. Feel
+free to use any libraries of your choosing, just be sure it is compilable in Android Studio.
+Create a git repository to hold everything and email me the link when you start so, I can
+track progress. As far as timeline is concerned, I was thinking a week but, let me know if
+you need more time and we can work around that.
