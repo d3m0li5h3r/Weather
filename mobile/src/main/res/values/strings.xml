@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Weather</string>
+    <string name="permission_location_denied">Location permission denied. Please use to search button.</string>
+    <string name="dismiss">Dismiss</string>
 </resources>
