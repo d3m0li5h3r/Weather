@@ -2,4 +2,27 @@
     <string name="app_name">Weather</string>
     <string name="permission_location_denied">Location permission denied. Please use to search button.</string>
     <string name="dismiss">Dismiss</string>
+    <string name="weather">Today\'s Weather</string>
+    <string name="temperature">%1$d \u2103</string>
+    <string name="temperatureMinMax">Max %1$d\u00B0\u2191 \u2022 Min %2$d\u00B0\u2193</string>
+    <string name="weather_clear_day">&#xf00d;</string>
+    <string name="weather_clear_night">&#xf02e;</string>
+    <string name="weather_thunder_rain">&#xf01d;</string>
+    <string name="weather_thunder_storm">&#xf01e;</string>
+    <string name="weather_drizzle">&#xf01c;</string>
+    <string name="weather_rain">&#xf019;</string>
+    <string name="weather_rain_mix">&#xf017;</string>
+    <string name="weather_shower">&#xf01a;</string>
+    <string name="weather_snow">&#xf01b;</string>
+    <string name="weather_sleet">&#xf0b5;</string>
+    <string name="weather_mist">&#xf014;</string>
+    <string name="weather_smoke">&#xf062;</string>
+    <string name="weather_dust">&#xf063;</string>
+    <string name="weather_winds">&#xf050;</string>
+    <string name="weather_tornado">&#xf056;</string>
+    <string name="weather_clouds">&#xf013;</string>
+    <string name="weather_hurricane">&#xf073;</string>
+    <string name="weather_cold">&#xf053;</string>
+    <string name="weather_hot">&#xf055;</string>
+    <string name="weather_hail">&#xf015;</string>
 </resources>

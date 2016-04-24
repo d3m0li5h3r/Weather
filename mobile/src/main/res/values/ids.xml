@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="cityName" type="id" />
+    <item name="date" type="id" />
+    <item name="temperature" type="id" />
+    <item name="icon" type="id" />
+    <item name="minMax" type="id" />
+    <item name="desc" type="id" />
+</resources>

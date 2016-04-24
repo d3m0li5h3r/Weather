@@ -11,6 +11,7 @@ public class WeatherData {
 
     private String name;
     private String base;
+    private String message;
 
     private Coordinate coord;
     private Main main;
@@ -56,6 +57,14 @@ public class WeatherData {
 
     public void setBase(String base) {
         this.base = base;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
     }
 
     public Coordinate getCoord() {

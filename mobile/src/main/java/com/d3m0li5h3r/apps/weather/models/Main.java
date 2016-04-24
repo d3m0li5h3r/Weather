@@ -6,7 +6,7 @@ package com.d3m0li5h3r.apps.weather.models;
 public class Main {
     private float temp;
     private float pressure;
-    private int humidity;
+    private float humidity;
     private float temp_min;
     private float temp_max;
     private float sea_level;
@@ -28,11 +28,11 @@ public class Main {
         this.pressure = pressure;
     }
 
-    public int getHumidity() {
+    public float getHumidity() {
         return humidity;
     }
 
-    public void setHumidity(int humidity) {
+    public void setHumidity(float humidity) {
         this.humidity = humidity;
     }
 
