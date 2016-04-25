@@ -5,9 +5,11 @@ package com.d3m0li5h3r.apps.weather.models;
  */
 public class WeatherData {
     private int cod;
+    private int dt;
+
+    private float visibility;
 
     private long id;
-    private long dt;
 
     private String name;
     private String base;
@@ -27,20 +29,24 @@ public class WeatherData {
         this.cod = cod;
     }
 
+    public int getDate() {
+        return dt;
+    }
+
+    public void setDate(int dt) {
+        this.dt = dt;
+    }
+
+    public float getVisibility() {
+        return visibility / 1000;
+    }
+
     public long getId() {
         return id;
     }
 
     public void setId(long id) {
         this.id = id;
-    }
-
-    public long getDate() {
-        return dt;
-    }
-
-    public void setDate(long dt) {
-        this.dt = dt;
     }
 
     public String getName() {

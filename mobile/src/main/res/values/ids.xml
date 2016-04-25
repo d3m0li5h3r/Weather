@@ -1,9 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <item name="content" type="id" />
     <item name="cityName" type="id" />
     <item name="date" type="id" />
     <item name="temperature" type="id" />
     <item name="icon" type="id" />
     <item name="minMax" type="id" />
     <item name="desc" type="id" />
+    <item name="wind" type="id" />
+    <item name="windSpeed" type="id" />
+    <item name="gustSpeed" type="id" />
+    <item name="humidity" type="id" />
+    <item name="humidityLevel" type="id" />
+    <item name="pressure" type="id" />
+    <item name="pressureLevel" type="id" />
+    <item name="visibility" type="id" />
+    <item name="visibilityLevel" type="id" />
 </resources>

@@ -1,10 +1,33 @@
 <resources>
     <string name="app_name">Weather</string>
-    <string name="permission_location_denied">Location permission denied. Please use to search button.</string>
-    <string name="dismiss">Dismiss</string>
     <string name="weather">Today\'s Weather</string>
+
+    <string name="wind">Wind</string>
+    <string name="humidity">Humidity</string>
+    <string name="pressure">Pressure</string>
+    <string name="visibility">Visibility</string>
+
+    <string name="permission_location_denied">Location permission denied. Please use to search button.</string>
+
+    <string name="cityName">%1$s, %2$s</string>
+    <string name="date">%1$s UTC</string>
     <string name="temperature">%1$d \u2103</string>
     <string name="temperatureMinMax">Max %1$d\u00B0\u2191 \u2022 Min %2$d\u00B0\u2193</string>
+    <string name="windSpeed">%1$s m/s %2$s</string>
+    <string name="gustSpeed">%1$s m/s</string>
+    <string name="humidityLevel">%1$s \%</string>
+    <string name="pressureLevel">%1$s hPa</string>
+    <string name="visibilityLevel">%1$s kms</string>
+
+    <string name="symbolNorth">\u2191</string>
+    <string name="symbolNorthEast">\u2197</string>
+    <string name="symbolEast">\u2192</string>
+    <string name="symbolSouthEast">\u2198</string>
+    <string name="symbolSouth">\u2193</string>
+    <string name="symbolSouthWest">\u2199</string>
+    <string name="symbolWest">\u2190</string>
+    <string name="symbolNorthWest">\u2196</string>
+
     <string name="weather_clear_day">&#xf00d;</string>
     <string name="weather_clear_night">&#xf02e;</string>
     <string name="weather_thunder_rain">&#xf01d;</string>
