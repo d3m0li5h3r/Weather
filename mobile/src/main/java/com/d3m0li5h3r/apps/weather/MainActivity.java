@@ -1,19 +1,24 @@
 package com.d3m0li5h3r.apps.weather;
 
 import android.Manifest;
+import android.app.ProgressDialog;
+import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.graphics.Typeface;
 import android.location.Location;
+import android.os.AsyncTask;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
+import android.speech.RecognizerIntent;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.content.PermissionChecker;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -25,14 +30,25 @@ import com.d3m0li5h3r.apps.weather.models.Weather;
 import com.d3m0li5h3r.apps.weather.models.WeatherData;
 import com.d3m0li5h3r.apps.weather.models.Wind;
 import com.d3m0li5h3r.apps.weather.utils.Constants;
+import com.d3m0li5h3r.apps.weather.utils.DatabaseHelper;
 import com.d3m0li5h3r.apps.weather.utils.Utils;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
+import com.quinny898.library.persistentsearch.SearchBox;
+import com.quinny898.library.persistentsearch.SearchResult;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.lang.ref.WeakReference;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Locale;
 
@@ -44,8 +60,11 @@ import retrofit2.converter.gson.GsonConverterFactory;
 
 public class MainActivity extends AppCompatActivity
         implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener,
-        LocationListener, Callback<WeatherData> {
+        LocationListener, Callback<WeatherData>, SearchBox.SearchListener {
     private final int ID_REQUEST_PERMISSIONS = 0x100;
+
+    private final String KEY_DATABASE_EXISTS = "DBExists";
+    private final static String NAME_CITY_FILE = "city.list.json";
 
     private boolean isDayTime;
 
@@ -65,9 +84,8 @@ public class MainActivity extends AppCompatActivity
     private TextView visibilityView;
     private TextView visibilityLevelView;
 
-    private FloatingActionButton fabView;
-
     private LinearLayout contentView;
+    private SearchBox searchView;
 
     private GoogleApiClient googleApiClient;
 
@@ -79,27 +97,19 @@ public class MainActivity extends AppCompatActivity
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
+        if (!PreferenceManager.getDefaultSharedPreferences(this).contains(KEY_DATABASE_EXISTS))
+            new CreateDatabaseTask(this).execute();
 
         contentView = (LinearLayout) findViewById(R.id.content);
 
-        fabView = (FloatingActionButton) findViewById(R.id.fab);
-        fabView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                //TODO: inflate search bar with animation
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-            }
-        });
+        searchView = (SearchBox) findViewById(R.id.searchBox);
 
         cityNameView = (TextView) findViewById(R.id.cityName);
         dateView = (TextView) findViewById(R.id.date);
         minMaxView = (TextView) findViewById(R.id.minMax);
         descriptionView = (TextView) findViewById(R.id.desc);
         temperatureView = (TextView) findViewById(R.id.temperature);
-        iconView = (TextView) findViewById(R.id.icon);
+        iconView = (TextView) findViewById(R.id.weatherIcon);
         windView = (TextView) findViewById(R.id.wind);
         windSpeedView = (TextView) findViewById(R.id.windSpeed);
         gustSpeedView = (TextView) findViewById(R.id.gustSpeed);
@@ -117,6 +127,7 @@ public class MainActivity extends AppCompatActivity
 
         checkPermissions();
         initRetrofit();
+        initSearchBox();
     }
 
     @Override
@@ -125,6 +136,17 @@ public class MainActivity extends AppCompatActivity
 
         if (null != googleApiClient)
             googleApiClient.disconnect();
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == SearchBox.VOICE_RECOGNITION_CODE && resultCode == RESULT_OK) {
+            ArrayList<String> matches = data
+                    .getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+
+            searchView.populateEditText(matches.get(0));
+        }
+        super.onActivityResult(requestCode, resultCode, data);
     }
 
     @Override
@@ -138,7 +160,7 @@ public class MainActivity extends AppCompatActivity
                         && PermissionChecker.PERMISSION_GRANTED == grantResults[0])
                     getLocation();
                 else
-                    Snackbar.make(fabView, R.string.permission_location_denied,
+                    Snackbar.make(cityNameView, R.string.permission_location_denied,
                             Snackbar.LENGTH_LONG)
                             .show();
 
@@ -152,7 +174,7 @@ public class MainActivity extends AppCompatActivity
     public void onConnected(@Nullable Bundle bundle) {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
-            Snackbar.make(fabView, R.string.permission_location_denied, Snackbar.LENGTH_LONG)
+            Snackbar.make(cityNameView, R.string.permission_location_denied, Snackbar.LENGTH_LONG)
                     .show();
 
             return;
@@ -196,7 +218,7 @@ public class MainActivity extends AppCompatActivity
         weatherData = response.body();
 
         if (404 == weatherData.getCode()) {
-            Snackbar.make(fabView, weatherData.getMessage(), Snackbar.LENGTH_INDEFINITE).show();
+            Snackbar.make(cityNameView, weatherData.getMessage(), Snackbar.LENGTH_INDEFINITE).show();
             return;
         }
 
@@ -207,7 +229,31 @@ public class MainActivity extends AppCompatActivity
     public void onFailure(Call<WeatherData> call, Throwable t) {
         setProgressBarIndeterminateVisibility(false);
 
-        Snackbar.make(fabView, t.getLocalizedMessage(), Snackbar.LENGTH_INDEFINITE).show();
+        Snackbar.make(cityNameView, t.getLocalizedMessage(), Snackbar.LENGTH_INDEFINITE).show();
+    }
+
+    @Override
+    public void onSearchOpened() {
+    }
+
+    @Override
+    public void onSearchCleared() {
+    }
+
+    @Override
+    public void onSearchClosed() {
+    }
+
+    @Override
+    public void onSearchTermChanged(String term) {
+    }
+
+    @Override
+    public void onSearch(String result) {
+    }
+
+    @Override
+    public void onResultClick(SearchResult result) {
     }
 
     private void checkPermissions() {
@@ -223,6 +269,25 @@ public class MainActivity extends AppCompatActivity
         getLocation();
     }
 
+    private void initRetrofit() {
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(Constants.URL_BASE)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+
+        weatherApi = retrofit.create(WeatherApi.class);
+    }
+
+    private void initSearchBox() {
+        searchView.enableVoiceRecognition(this);
+        searchView.setLogoText(getString(R.string.hint_search_city));
+        searchView.setSearchListener(this);
+    }
+
+    private void loadSearchBoxResults() {
+
+    }
+
     private void getLocation() {
         googleApiClient = new GoogleApiClient.Builder(this)
                 .addApi(LocationServices.API)
@@ -231,15 +296,6 @@ public class MainActivity extends AppCompatActivity
                 .build();
 
         googleApiClient.connect();
-    }
-
-    private void initRetrofit() {
-        Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(Constants.URL_BASE)
-                .addConverterFactory(GsonConverterFactory.create())
-                .build();
-
-        weatherApi = retrofit.create(WeatherApi.class);
     }
 
     private void updateUI() {
@@ -258,6 +314,7 @@ public class MainActivity extends AppCompatActivity
 
         cityNameView.setText(String.format(getString(R.string.cityName),
                 weatherData.getName(), sys.getCountry()));
+        searchView.setSearchString(cityNameView.getText().toString());
 
         minMaxView.setText(String.format(getString(R.string.temperatureMinMax),
                 Math.round(main.getTemp_max()), Math.round(main.getTemp_min())));
@@ -413,5 +470,106 @@ public class MainActivity extends AppCompatActivity
             return "NW";
         else
             return "N";
+    }
+
+    private class CreateDatabaseTask extends AsyncTask<Void, Void, Void> {
+        private WeakReference<Context> contextReference;
+        private ProgressDialog dialog;
+
+        public CreateDatabaseTask(Context context) {
+            contextReference = new WeakReference<>(context);
+
+            dialog = new ProgressDialog(context);
+            dialog.setIndeterminate(true);
+            dialog.setMessage(context.getString(R.string.please_wait));
+        }
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+
+            if (null != contextReference.get())
+                dialog.show();
+        }
+
+        @Override
+        protected Void doInBackground(Void... params) {
+            Context context = contextReference.get();
+            if (null != context) {
+                DatabaseHelper dbHelper = new DatabaseHelper(context);
+                try {
+                    BufferedReader reader = new BufferedReader(
+                            new InputStreamReader(context.getAssets().open(NAME_CITY_FILE)));
+
+
+                    String line;
+                    while (null != (line = reader.readLine())) {
+                        JSONObject json = new JSONObject(line);
+                        dbHelper.insert(json.getInt("_id"), json.getString("name"));
+                    }
+                } catch (IOException | JSONException e) {
+                    //Do nothing
+                }
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void aVoid) {
+            super.onPostExecute(aVoid);
+
+            if (null != contextReference.get() && dialog.isShowing()) {
+                dialog.dismiss();
+
+                loadSearchBoxResults();
+            }
+        }
+    }
+
+    private class LoadSearchBoxResultsTask extends AsyncTask<Void, Void, Void> {
+        private WeakReference<Context> contextReference;
+        private ProgressDialog dialog;
+
+        public LoadSearchBoxResultsTask(Context context) {
+            contextReference = new WeakReference<>(context);
+
+            dialog = new ProgressDialog(context);
+            dialog.setIndeterminate(true);
+            dialog.setMessage(context.getString(R.string.please_wait));
+        }
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+
+            if (null != contextReference.get())
+                dialog.show();
+        }
+
+        @Override
+        protected Void doInBackground(Void... params) {
+            Context context = contextReference.get();
+
+            if (null != context) {
+                DatabaseHelper dbHelper = new DatabaseHelper(context);
+                Cursor cursor = dbHelper.fetchAllCities();
+                if (cursor.moveToFirst()) {
+                    do {
+                        SearchResult result = new SearchResult(cursor.getString(1));
+
+                    } while (cursor.moveToNext());
+                }
+            }
+
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void aVoid) {
+            super.onPostExecute(aVoid);
+
+            if (null != contextReference.get() && dialog.isShowing())
+                dialog.dismiss();
+        }
     }
 }

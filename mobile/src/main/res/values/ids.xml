@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <item name="content" type="id" />
+    <item name="searchBox" type="id" />
     <item name="cityName" type="id" />
     <item name="date" type="id" />
     <item name="temperature" type="id" />
-    <item name="icon" type="id" />
+    <item name="weatherIcon" type="id" />
     <item name="minMax" type="id" />
     <item name="desc" type="id" />
     <item name="wind" type="id" />
