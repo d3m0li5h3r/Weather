@@ -17,6 +17,9 @@
 package com.balysv.materialmenu.ps;
 
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.ObjectAnimator;
 import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.Canvas;
@@ -26,126 +29,37 @@ import android.graphics.Paint;
 import android.graphics.PixelFormat;
 import android.graphics.drawable.Animatable;
 import android.graphics.drawable.Drawable;
+import android.util.Property;
 import android.util.TypedValue;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.Interpolator;
 
-import com.nineoldandroids.animation.Animator;
-import com.nineoldandroids.animation.AnimatorListenerAdapter;
-import com.nineoldandroids.animation.ObjectAnimator;
-import com.nineoldandroids.util.Property;
-
+import static android.animation.Animator.AnimatorListener;
 import static android.graphics.Paint.Style;
-import static com.nineoldandroids.animation.Animator.AnimatorListener;
 
 
 public class MaterialMenuDrawable extends Drawable implements Animatable {
 
-    public enum IconState {
-        BURGER, ARROW, X, CHECK
-    }
-
-    public enum AnimationState {
-        BURGER_ARROW, BURGER_X, ARROW_X, ARROW_CHECK, BURGER_CHECK, X_CHECK;
-
-        public IconState getFirstState() {
-            switch (this) {
-                case BURGER_ARROW:
-                    return IconState.BURGER;
-                case BURGER_X:
-                    return IconState.BURGER;
-                case ARROW_X:
-                    return IconState.ARROW;
-                case ARROW_CHECK:
-                    return IconState.ARROW;
-                case BURGER_CHECK:
-                    return IconState.BURGER;
-                case X_CHECK:
-                    return IconState.X;
-                default:
-                    return null;
-            }
-        }
-
-        public IconState getSecondState() {
-            switch (this) {
-                case BURGER_ARROW:
-                    return IconState.ARROW;
-                case BURGER_X:
-                    return IconState.X;
-                case ARROW_X:
-                    return IconState.X;
-                case ARROW_CHECK:
-                    return IconState.CHECK;
-                case BURGER_CHECK:
-                    return IconState.CHECK;
-                case X_CHECK:
-                    return IconState.CHECK;
-                default:
-                    return null;
-            }
-        }
-    }
-
-    public enum Stroke {
-        /**
-         * 3 dip
-         */
-        REGULAR(3),
-        /**
-         * 2 dip
-         */
-        THIN(2),
-        /**
-         * 1 dip
-         */
-        EXTRA_THIN(1);
-
-        private final int strokeWidth;
-
-        Stroke(int strokeWidth) {
-            this.strokeWidth = strokeWidth;
-        }
-
-        protected static Stroke valueOf(int strokeWidth) {
-            switch (strokeWidth) {
-                case 3:
-                    return REGULAR;
-                case 2:
-                    return THIN;
-                case 1:
-                    return EXTRA_THIN;
-                default:
-                    return THIN;
-            }
-        }
-    }
-
-    public static final int DEFAULT_COLOR              = Color.WHITE;
-    public static final int DEFAULT_SCALE              = 1;
+    public static final int DEFAULT_COLOR = Color.WHITE;
+    public static final int DEFAULT_SCALE = 1;
     public static final int DEFAULT_TRANSFORM_DURATION = 800;
-    public static final int DEFAULT_PRESSED_DURATION   = 400;
-
-    private static final int BASE_DRAWABLE_WIDTH  = 40;
+    public static final int DEFAULT_PRESSED_DURATION = 400;
+    private static final int BASE_DRAWABLE_WIDTH = 40;
     private static final int BASE_DRAWABLE_HEIGHT = 40;
-    private static final int BASE_ICON_WIDTH      = 20;
-    private static final int BASE_CIRCLE_RADIUS   = 18;
-
+    private static final int BASE_ICON_WIDTH = 20;
+    private static final int BASE_CIRCLE_RADIUS = 18;
     private static final float ARROW_MID_LINE_ANGLE = 180;
     private static final float ARROW_TOP_LINE_ANGLE = 135;
     private static final float ARROW_BOT_LINE_ANGLE = 225;
-    private static final float X_TOP_LINE_ANGLE     = 44;
-    private static final float X_BOT_LINE_ANGLE     = -44;
-    private static final float X_ROTATION_ANGLE     = 90;
-    private static final float CHECK_MIDDLE_ANGLE   = 135;
-    private static final float CHECK_BOTTOM_ANGLE   = -90;
-
+    private static final float X_TOP_LINE_ANGLE = 44;
+    private static final float X_BOT_LINE_ANGLE = -44;
+    private static final float X_ROTATION_ANGLE = 90;
+    private static final float CHECK_MIDDLE_ANGLE = 135;
+    private static final float CHECK_BOTTOM_ANGLE = -90;
     private static final float TRANSFORMATION_START = 0;
-    private static final float TRANSFORMATION_MID   = 1.0f;
-    private static final float TRANSFORMATION_END   = 2.0f;
-
+    private static final float TRANSFORMATION_MID = 1.0f;
+    private static final float TRANSFORMATION_END = 2.0f;
     private static final int DEFAULT_CIRCLE_ALPHA = 200;
-
     private final float diph;
     private final float dip1;
     private final float dip2;
@@ -153,39 +67,57 @@ public class MaterialMenuDrawable extends Drawable implements Animatable {
     private final float dip4;
     private final float dip6;
     private final float dip8;
-
-    private final int   width;
-    private final int   height;
+    private final int width;
+    private final int height;
     private final float strokeWidth;
     private final float iconWidth;
     private final float topPadding;
     private final float sidePadding;
     private final float circleRadius;
-
     private final Stroke stroke;
-
     private final Object lock = new Object();
-
-    private final Paint iconPaint   = new Paint();
+    private final Paint iconPaint = new Paint();
     private final Paint circlePaint = new Paint();
-
-    private float   transformationValue   = 0f;
-    private float   pressedProgressValue  = 0f;
+    private float transformationValue = 0f;
+    private float pressedProgressValue = 0f;
     private boolean transformationRunning = false;
-
-    private IconState      currentIconState = IconState.BURGER;
-    private AnimationState animationState   = AnimationState.BURGER_ARROW;
-
+    private IconState currentIconState = IconState.BURGER;
+    private AnimationState animationState = AnimationState.BURGER_ARROW;
     private IconState animatingIconState;
-    private boolean   drawTouchCircle;
-    private boolean   neverDrawTouch;
-    private boolean   rtlEnabled;
-
-    private ObjectAnimator   transformation;
-    private ObjectAnimator   pressedCircle;
+    private boolean drawTouchCircle;
+    private boolean neverDrawTouch;
+    private boolean rtlEnabled;
+    private ObjectAnimator transformation;
+    private ObjectAnimator pressedCircle;
     private AnimatorListener animatorListener;
-
     private MaterialMenuState materialMenuState;
+    /*
+     * Animations
+     */
+    private Property<MaterialMenuDrawable, Float> transformationProperty
+            = new Property<MaterialMenuDrawable, Float>(Float.class, "transformation") {
+        @Override
+        public Float get(MaterialMenuDrawable object) {
+            return object.getTransformationValue();
+        }
+
+        @Override
+        public void set(MaterialMenuDrawable object, Float value) {
+            object.setTransformationValue(value);
+        }
+    };
+    private Property<MaterialMenuDrawable, Float> pressedProgressProperty
+            = new Property<MaterialMenuDrawable, Float>(Float.class, "pressedProgress") {
+        @Override
+        public Float get(MaterialMenuDrawable object) {
+            return object.getPressedProgress();
+        }
+
+        @Override
+        public void set(MaterialMenuDrawable object, Float value) {
+            object.setPressedProgress(value);
+        }
+    };
 
     public MaterialMenuDrawable(Context context, int color, Stroke stroke) {
         this(context, color, stroke, DEFAULT_SCALE, DEFAULT_TRANSFORM_DURATION, DEFAULT_PRESSED_DURATION);
@@ -223,7 +155,7 @@ public class MaterialMenuDrawable extends Drawable implements Animatable {
     }
 
     private MaterialMenuDrawable(int color, Stroke stroke, long transformDuration, long pressedDuration,
-        int width, int height, float iconWidth, float circleRadius, float strokeWidth, float dip1
+                                 int width, int height, float iconWidth, float circleRadius, float strokeWidth, float dip1
     ) {
         this.dip1 = dip1;
         this.dip2 = dip1 * 2;
@@ -247,6 +179,10 @@ public class MaterialMenuDrawable extends Drawable implements Animatable {
         materialMenuState = new MaterialMenuState();
     }
 
+    static float dpToPx(Resources resources, float dp) {
+        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, resources.getDisplayMetrics());
+    }
+
     private void initPaint(int color) {
         iconPaint.setAntiAlias(true);
         iconPaint.setStyle(Style.STROKE);
@@ -265,7 +201,8 @@ public class MaterialMenuDrawable extends Drawable implements Animatable {
      * Drawing
      */
 
-    @Override public void draw(Canvas canvas) {
+    @Override
+    public void draw(Canvas canvas) {
         final float ratio = transformationValue <= 1 ? transformationValue : 2 - transformationValue;
 
         if (rtlEnabled) {
@@ -589,15 +526,18 @@ public class MaterialMenuDrawable extends Drawable implements Animatable {
         return 0;
     }
 
-    @Override public void setAlpha(int alpha) {
+    @Override
+    public void setAlpha(int alpha) {
         iconPaint.setAlpha(alpha);
     }
 
-    @Override public void setColorFilter(ColorFilter cf) {
+    @Override
+    public void setColorFilter(ColorFilter cf) {
         iconPaint.setColorFilter(cf);
     }
 
-    @Override public int getOpacity() {
+    @Override
+    public int getOpacity() {
         return PixelFormat.TRANSPARENT;
     }
 
@@ -623,7 +563,7 @@ public class MaterialMenuDrawable extends Drawable implements Animatable {
         transformation.setInterpolator(interpolator);
     }
 
-    public void setAnimationListener(AnimatorListener listener) {
+    public void setAnimationListener(Animator.AnimatorListener listener) {
         if (animatorListener != null) {
             transformation.removeListener(animatorListener);
         }
@@ -637,6 +577,46 @@ public class MaterialMenuDrawable extends Drawable implements Animatable {
 
     public void setNeverDrawTouch(boolean neverDrawTouch) {
         this.neverDrawTouch = neverDrawTouch;
+    }
+
+    public void animateIconState(IconState state, boolean drawTouch) {
+        synchronized (lock) {
+            if (transformationRunning) {
+                transformation.end();
+                pressedCircle.end();
+            }
+            drawTouchCircle = drawTouch;
+            animatingIconState = state;
+            start();
+        }
+    }
+
+    public IconState setTransformationOffset(AnimationState animationState, float offset) {
+        if (offset < TRANSFORMATION_START || offset > TRANSFORMATION_END) {
+            throw new IllegalArgumentException(
+                    String.format("Value must be between %s and %s", TRANSFORMATION_START, TRANSFORMATION_END)
+            );
+        }
+
+        this.animationState = animationState;
+
+        final boolean isFirstIcon = offset < TRANSFORMATION_MID || offset == TRANSFORMATION_END;
+
+        currentIconState = isFirstIcon ? animationState.getFirstState() : animationState.getSecondState();
+        animatingIconState = isFirstIcon ? animationState.getSecondState() : animationState.getFirstState();
+
+        setTransformationValue(offset);
+
+        return currentIconState;
+    }
+
+    public void setRTLEnabled(boolean rtlEnabled) {
+        this.rtlEnabled = rtlEnabled;
+        invalidateSelf();
+    }
+
+    public IconState getIconState() {
+        return currentIconState;
     }
 
     public void setIconState(IconState iconState) {
@@ -670,75 +650,6 @@ public class MaterialMenuDrawable extends Drawable implements Animatable {
         }
     }
 
-    public void animateIconState(IconState state, boolean drawTouch) {
-        synchronized (lock) {
-            if (transformationRunning) {
-                transformation.end();
-                pressedCircle.end();
-            }
-            drawTouchCircle = drawTouch;
-            animatingIconState = state;
-            start();
-        }
-    }
-
-    public IconState setTransformationOffset(AnimationState animationState, float offset) {
-        if (offset < TRANSFORMATION_START || offset > TRANSFORMATION_END) {
-            throw new IllegalArgumentException(
-                String.format("Value must be between %s and %s", TRANSFORMATION_START, TRANSFORMATION_END)
-            );
-        }
-
-        this.animationState = animationState;
-
-        final boolean isFirstIcon = offset < TRANSFORMATION_MID || offset == TRANSFORMATION_END;
-
-        currentIconState = isFirstIcon ? animationState.getFirstState() : animationState.getSecondState();
-        animatingIconState = isFirstIcon ? animationState.getSecondState() : animationState.getFirstState();
-
-        setTransformationValue(offset);
-
-        return currentIconState;
-    }
-
-    public void setRTLEnabled(boolean rtlEnabled) {
-        this.rtlEnabled = rtlEnabled;
-        invalidateSelf();
-    }
-
-    public IconState getIconState() {
-        return currentIconState;
-    }
-
-    /*
-     * Animations
-     */
-    private Property<MaterialMenuDrawable, Float> transformationProperty
-        = new Property<MaterialMenuDrawable, Float>(Float.class, "transformation") {
-        @Override
-        public Float get(MaterialMenuDrawable object) {
-            return object.getTransformationValue();
-        }
-
-        @Override
-        public void set(MaterialMenuDrawable object, Float value) {
-            object.setTransformationValue(value);
-        }
-    };
-
-    private Property<MaterialMenuDrawable, Float> pressedProgressProperty
-        = new Property<MaterialMenuDrawable, Float>(Float.class, "pressedProgress") {
-        @Override
-        public Float get(MaterialMenuDrawable object) {
-            return object.getPressedProgress();
-        }
-
-        @Override
-        public void set(MaterialMenuDrawable object, Float value) {
-            object.setPressedProgress(value);
-        }
-    };
-
     public Float getTransformationValue() {
         return transformationValue;
     }
@@ -763,7 +674,8 @@ public class MaterialMenuDrawable extends Drawable implements Animatable {
         transformation.setInterpolator(new DecelerateInterpolator(3));
         transformation.setDuration(transformDuration);
         transformation.addListener(new AnimatorListenerAdapter() {
-            @Override public void onAnimationEnd(Animator animation) {
+            @Override
+            public void onAnimationEnd(Animator animation) {
                 transformationRunning = false;
                 setIconState(animatingIconState);
             }
@@ -774,11 +686,13 @@ public class MaterialMenuDrawable extends Drawable implements Animatable {
         pressedCircle.setDuration(pressedDuration);
         pressedCircle.setInterpolator(new DecelerateInterpolator());
         pressedCircle.addListener(new AnimatorListenerAdapter() {
-            @Override public void onAnimationEnd(Animator animation) {
+            @Override
+            public void onAnimationEnd(Animator animation) {
                 pressedProgressValue = 0;
             }
 
-            @Override public void onAnimationCancel(Animator animation) {
+            @Override
+            public void onAnimationCancel(Animator animation) {
                 pressedProgressValue = 0;
             }
         });
@@ -825,11 +739,12 @@ public class MaterialMenuDrawable extends Drawable implements Animatable {
         }
 
         throw new IllegalStateException(
-            String.format("Animating from %s to %s is not supported", currentIconState, animatingIconState)
+                String.format("Animating from %s to %s is not supported", currentIconState, animatingIconState)
         );
     }
 
-    @Override public void start() {
+    @Override
+    public void start() {
         if (transformationRunning) return;
 
         if (animatingIconState != null && animatingIconState != currentIconState) {
@@ -837,8 +752,8 @@ public class MaterialMenuDrawable extends Drawable implements Animatable {
 
             final boolean direction = resolveTransformation();
             transformation.setFloatValues(
-                direction ? TRANSFORMATION_START : TRANSFORMATION_MID,
-                direction ? TRANSFORMATION_MID : TRANSFORMATION_END
+                    direction ? TRANSFORMATION_START : TRANSFORMATION_MID,
+                    direction ? TRANSFORMATION_MID : TRANSFORMATION_END
             );
             transformation.start();
         }
@@ -854,7 +769,8 @@ public class MaterialMenuDrawable extends Drawable implements Animatable {
         invalidateSelf();
     }
 
-    @Override public void stop() {
+    @Override
+    public void stop() {
         if (isRunning() && transformation.isRunning()) {
             transformation.end();
         } else {
@@ -863,7 +779,8 @@ public class MaterialMenuDrawable extends Drawable implements Animatable {
         }
     }
 
-    @Override public boolean isRunning() {
+    @Override
+    public boolean isRunning() {
         return transformationRunning;
     }
 
@@ -877,7 +794,6 @@ public class MaterialMenuDrawable extends Drawable implements Animatable {
         return height;
     }
 
-
     @Override
     public ConstantState getConstantState() {
         materialMenuState.changingConfigurations = getChangingConfigurations();
@@ -890,6 +806,87 @@ public class MaterialMenuDrawable extends Drawable implements Animatable {
         return this;
     }
 
+
+    public enum IconState {
+        BURGER, ARROW, X, CHECK
+    }
+
+    public enum AnimationState {
+        BURGER_ARROW, BURGER_X, ARROW_X, ARROW_CHECK, BURGER_CHECK, X_CHECK;
+
+        public IconState getFirstState() {
+            switch (this) {
+                case BURGER_ARROW:
+                    return IconState.BURGER;
+                case BURGER_X:
+                    return IconState.BURGER;
+                case ARROW_X:
+                    return IconState.ARROW;
+                case ARROW_CHECK:
+                    return IconState.ARROW;
+                case BURGER_CHECK:
+                    return IconState.BURGER;
+                case X_CHECK:
+                    return IconState.X;
+                default:
+                    return null;
+            }
+        }
+
+        public IconState getSecondState() {
+            switch (this) {
+                case BURGER_ARROW:
+                    return IconState.ARROW;
+                case BURGER_X:
+                    return IconState.X;
+                case ARROW_X:
+                    return IconState.X;
+                case ARROW_CHECK:
+                    return IconState.CHECK;
+                case BURGER_CHECK:
+                    return IconState.CHECK;
+                case X_CHECK:
+                    return IconState.CHECK;
+                default:
+                    return null;
+            }
+        }
+    }
+
+    public enum Stroke {
+        /**
+         * 3 dip
+         */
+        REGULAR(3),
+        /**
+         * 2 dip
+         */
+        THIN(2),
+        /**
+         * 1 dip
+         */
+        EXTRA_THIN(1);
+
+        private final int strokeWidth;
+
+        Stroke(int strokeWidth) {
+            this.strokeWidth = strokeWidth;
+        }
+
+        protected static Stroke valueOf(int strokeWidth) {
+            switch (strokeWidth) {
+                case 3:
+                    return REGULAR;
+                case 2:
+                    return THIN;
+                case 1:
+                    return EXTRA_THIN;
+                default:
+                    return THIN;
+            }
+        }
+    }
+
     private final class MaterialMenuState extends ConstantState {
         private int changingConfigurations;
 
@@ -899,8 +896,8 @@ public class MaterialMenuDrawable extends Drawable implements Animatable {
         @Override
         public Drawable newDrawable() {
             MaterialMenuDrawable drawable = new MaterialMenuDrawable(
-                circlePaint.getColor(), stroke, transformation.getDuration(),
-                pressedCircle.getDuration(), width, height, iconWidth, circleRadius, strokeWidth, dip1
+                    circlePaint.getColor(), stroke, transformation.getDuration(),
+                    pressedCircle.getDuration(), width, height, iconWidth, circleRadius, strokeWidth, dip1
             );
             drawable.setIconState(animatingIconState != null ? animatingIconState : currentIconState);
             drawable.setRTLEnabled(rtlEnabled);
@@ -911,9 +908,5 @@ public class MaterialMenuDrawable extends Drawable implements Animatable {
         public int getChangingConfigurations() {
             return changingConfigurations;
         }
-    }
-
-    static float dpToPx(Resources resources, float dp) {
-        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, resources.getDisplayMetrics());
     }
 }

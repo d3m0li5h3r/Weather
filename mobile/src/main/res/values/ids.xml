@@ -2,6 +2,9 @@
 <resources>
     <item name="content" type="id" />
     <item name="searchBox" type="id" />
+    <item name="searchLogo" type="id" />
+    <item name="searchHint" type="id" />
+    <item name="searchClear" type="id" />
     <item name="cityName" type="id" />
     <item name="date" type="id" />
     <item name="temperature" type="id" />

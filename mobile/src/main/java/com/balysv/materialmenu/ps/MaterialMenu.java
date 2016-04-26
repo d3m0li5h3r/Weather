@@ -16,9 +16,8 @@
 
 package com.balysv.materialmenu.ps;
 
+import android.animation.Animator;
 import android.view.animation.Interpolator;
-
-import com.nineoldandroids.animation.Animator;
 
 import static com.balysv.materialmenu.ps.MaterialMenuDrawable.IconState;
 
@@ -27,18 +26,18 @@ import static com.balysv.materialmenu.ps.MaterialMenuDrawable.IconState;
  */
 public interface MaterialMenu {
     /**
-     * Change icon without animation
-     *
-     * @param state new icon state
-     */
-    public void setState(IconState state);
-
-    /**
      * Return current icon state
      *
      * @return icon state
      */
     public IconState getState();
+
+    /**
+     * Change icon without animation
+     *
+     * @param state new icon state
+     */
+    public void setState(IconState state);
 
     /**
      * Animate icon to given state.

@@ -1,17 +1,10 @@
 package com.d3m0li5h3r.apps.weather;
 
 import android.Manifest;
-import android.app.ProgressDialog;
-import android.content.Context;
-import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.database.Cursor;
 import android.graphics.Typeface;
 import android.location.Location;
-import android.os.AsyncTask;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
-import android.speech.RecognizerIntent;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.design.widget.Snackbar;
@@ -19,10 +12,18 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.content.PermissionChecker;
 import android.support.v7.app.AppCompatActivity;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.view.KeyEvent;
 import android.view.View;
+import android.view.inputmethod.EditorInfo;
+import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.balysv.materialmenu.ps.MaterialMenuDrawable;
+import com.balysv.materialmenu.ps.MaterialMenuView;
 import com.d3m0li5h3r.apps.weather.apis.WeatherApi;
 import com.d3m0li5h3r.apps.weather.models.Main;
 import com.d3m0li5h3r.apps.weather.models.Sys;
@@ -30,25 +31,14 @@ import com.d3m0li5h3r.apps.weather.models.Weather;
 import com.d3m0li5h3r.apps.weather.models.WeatherData;
 import com.d3m0li5h3r.apps.weather.models.Wind;
 import com.d3m0li5h3r.apps.weather.utils.Constants;
-import com.d3m0li5h3r.apps.weather.utils.DatabaseHelper;
 import com.d3m0li5h3r.apps.weather.utils.Utils;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
-import com.quinny898.library.persistentsearch.SearchBox;
-import com.quinny898.library.persistentsearch.SearchResult;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.lang.ref.WeakReference;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Locale;
 
@@ -60,13 +50,11 @@ import retrofit2.converter.gson.GsonConverterFactory;
 
 public class MainActivity extends AppCompatActivity
         implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener,
-        LocationListener, Callback<WeatherData>, SearchBox.SearchListener {
+        LocationListener, Callback<WeatherData>, View.OnClickListener {
     private final int ID_REQUEST_PERMISSIONS = 0x100;
 
-    private final String KEY_DATABASE_EXISTS = "DBExists";
-    private final static String NAME_CITY_FILE = "city.list.json";
-
     private boolean isDayTime;
+    private boolean isSearchOpen;
 
     private TextView cityNameView;
     private TextView dateView;
@@ -84,8 +72,12 @@ public class MainActivity extends AppCompatActivity
     private TextView visibilityView;
     private TextView visibilityLevelView;
 
+    private TextView searchTextView;
+    private EditText searchView;
+    private ImageView searchClearView;
+    private MaterialMenuView searchLogoView;
+
     private LinearLayout contentView;
-    private SearchBox searchView;
 
     private GoogleApiClient googleApiClient;
 
@@ -97,12 +89,12 @@ public class MainActivity extends AppCompatActivity
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        if (!PreferenceManager.getDefaultSharedPreferences(this).contains(KEY_DATABASE_EXISTS))
-            new CreateDatabaseTask(this).execute();
-
         contentView = (LinearLayout) findViewById(R.id.content);
 
-        searchView = (SearchBox) findViewById(R.id.searchBox);
+        searchTextView = (TextView) findViewById(R.id.searchHint);
+        searchView = (EditText) findViewById(R.id.searchBox);
+        searchClearView = (ImageView) findViewById(R.id.searchClear);
+        searchLogoView = (MaterialMenuView) findViewById(R.id.searchLogo);
 
         cityNameView = (TextView) findViewById(R.id.cityName);
         dateView = (TextView) findViewById(R.id.date);
@@ -123,11 +115,47 @@ public class MainActivity extends AppCompatActivity
         Typeface weatherFont = Typeface.createFromAsset(this.getAssets(), "weather.ttf");
         iconView.setTypeface(weatherFont);
 
+        searchTextView.setOnClickListener(this);
+        searchLogoView.setOnClickListener(this);
+        searchClearView.setOnClickListener(this);
+
+        searchView.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                if (EditorInfo.IME_ACTION_SEARCH == actionId) {
+                    Call<WeatherData> call = weatherApi
+                            .getWeatherInformation(searchView.getText().toString());
+                    call.enqueue(MainActivity.this);
+
+                    return true;
+                }
+
+                return false;
+            }
+        });
+
+        searchView.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                if (0 < s.length() && isSearchOpen)
+                    searchClearView.setVisibility(View.VISIBLE);
+                else
+                    searchClearView.setVisibility(View.GONE);
+            }
+        });
+
         setProgressBarIndeterminateVisibility(true);
 
         checkPermissions();
         initRetrofit();
-        initSearchBox();
     }
 
     @Override
@@ -136,17 +164,6 @@ public class MainActivity extends AppCompatActivity
 
         if (null != googleApiClient)
             googleApiClient.disconnect();
-    }
-
-    @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode == SearchBox.VOICE_RECOGNITION_CODE && resultCode == RESULT_OK) {
-            ArrayList<String> matches = data
-                    .getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
-
-            searchView.populateEditText(matches.get(0));
-        }
-        super.onActivityResult(requestCode, resultCode, data);
     }
 
     @Override
@@ -167,6 +184,31 @@ public class MainActivity extends AppCompatActivity
                 break;
             default:
                 // Do nothing
+        }
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (isSearchOpen) {
+            closeSearch();
+        } else
+            super.onBackPressed();
+    }
+
+    @Override
+    public void onClick(View v) {
+        int id = v.getId();
+
+        switch (id) {
+            case R.id.searchHint:
+                openSearch();
+                break;
+            case R.id.searchClear:
+                searchView.setText(null);
+                break;
+            case R.id.searchLogo:
+                closeSearch();
+                break;
         }
     }
 
@@ -232,30 +274,6 @@ public class MainActivity extends AppCompatActivity
         Snackbar.make(cityNameView, t.getLocalizedMessage(), Snackbar.LENGTH_INDEFINITE).show();
     }
 
-    @Override
-    public void onSearchOpened() {
-    }
-
-    @Override
-    public void onSearchCleared() {
-    }
-
-    @Override
-    public void onSearchClosed() {
-    }
-
-    @Override
-    public void onSearchTermChanged(String term) {
-    }
-
-    @Override
-    public void onSearch(String result) {
-    }
-
-    @Override
-    public void onResultClick(SearchResult result) {
-    }
-
     private void checkPermissions() {
         int permission = ContextCompat
                 .checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION);
@@ -276,16 +294,6 @@ public class MainActivity extends AppCompatActivity
                 .build();
 
         weatherApi = retrofit.create(WeatherApi.class);
-    }
-
-    private void initSearchBox() {
-        searchView.enableVoiceRecognition(this);
-        searchView.setLogoText(getString(R.string.hint_search_city));
-        searchView.setSearchListener(this);
-    }
-
-    private void loadSearchBoxResults() {
-
     }
 
     private void getLocation() {
@@ -314,7 +322,7 @@ public class MainActivity extends AppCompatActivity
 
         cityNameView.setText(String.format(getString(R.string.cityName),
                 weatherData.getName(), sys.getCountry()));
-        searchView.setSearchString(cityNameView.getText().toString());
+        setText(searchView, cityNameView.getText());
 
         minMaxView.setText(String.format(getString(R.string.temperatureMinMax),
                 Math.round(main.getTemp_max()), Math.round(main.getTemp_min())));
@@ -472,104 +480,31 @@ public class MainActivity extends AppCompatActivity
             return "N";
     }
 
-    private class CreateDatabaseTask extends AsyncTask<Void, Void, Void> {
-        private WeakReference<Context> contextReference;
-        private ProgressDialog dialog;
+    private void openSearch() {
+        isSearchOpen = true;
+        searchLogoView.animateState(MaterialMenuDrawable.IconState.ARROW);
+        searchView.setVisibility(View.VISIBLE);
+        searchTextView.setVisibility(View.GONE);
 
-        public CreateDatabaseTask(Context context) {
-            contextReference = new WeakReference<>(context);
+        setText(searchView, cityNameView.getText());
 
-            dialog = new ProgressDialog(context);
-            dialog.setIndeterminate(true);
-            dialog.setMessage(context.getString(R.string.please_wait));
-        }
-
-        @Override
-        protected void onPreExecute() {
-            super.onPreExecute();
-
-            if (null != contextReference.get())
-                dialog.show();
-        }
-
-        @Override
-        protected Void doInBackground(Void... params) {
-            Context context = contextReference.get();
-            if (null != context) {
-                DatabaseHelper dbHelper = new DatabaseHelper(context);
-                try {
-                    BufferedReader reader = new BufferedReader(
-                            new InputStreamReader(context.getAssets().open(NAME_CITY_FILE)));
-
-
-                    String line;
-                    while (null != (line = reader.readLine())) {
-                        JSONObject json = new JSONObject(line);
-                        dbHelper.insert(json.getInt("_id"), json.getString("name"));
-                    }
-                } catch (IOException | JSONException e) {
-                    //Do nothing
-                }
-            }
-            return null;
-        }
-
-        @Override
-        protected void onPostExecute(Void aVoid) {
-            super.onPostExecute(aVoid);
-
-            if (null != contextReference.get() && dialog.isShowing()) {
-                dialog.dismiss();
-
-                loadSearchBoxResults();
-            }
-        }
     }
 
-    private class LoadSearchBoxResultsTask extends AsyncTask<Void, Void, Void> {
-        private WeakReference<Context> contextReference;
-        private ProgressDialog dialog;
+    private void closeSearch() {
+        isSearchOpen = false;
+        searchLogoView.animateState(MaterialMenuDrawable.IconState.BURGER);
+        searchView.setVisibility(View.GONE);
+        searchClearView.setVisibility(View.GONE);
+        searchTextView.setVisibility(View.VISIBLE);
+    }
 
-        public LoadSearchBoxResultsTask(Context context) {
-            contextReference = new WeakReference<>(context);
-
-            dialog = new ProgressDialog(context);
-            dialog.setIndeterminate(true);
-            dialog.setMessage(context.getString(R.string.please_wait));
-        }
-
-        @Override
-        protected void onPreExecute() {
-            super.onPreExecute();
-
-            if (null != contextReference.get())
-                dialog.show();
-        }
-
-        @Override
-        protected Void doInBackground(Void... params) {
-            Context context = contextReference.get();
-
-            if (null != context) {
-                DatabaseHelper dbHelper = new DatabaseHelper(context);
-                Cursor cursor = dbHelper.fetchAllCities();
-                if (cursor.moveToFirst()) {
-                    do {
-                        SearchResult result = new SearchResult(cursor.getString(1));
-
-                    } while (cursor.moveToNext());
-                }
+    private void setText(final EditText view, CharSequence text) {
+        view.setText(text);
+        view.post(new Runnable() {
+            @Override
+            public void run() {
+                view.setSelection(view.getText().length());
             }
-
-            return null;
-        }
-
-        @Override
-        protected void onPostExecute(Void aVoid) {
-            super.onPostExecute(aVoid);
-
-            if (null != contextReference.get() && dialog.isShowing())
-                dialog.dismiss();
-        }
+        });
     }
 }

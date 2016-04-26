@@ -16,6 +16,7 @@
 
 package com.balysv.materialmenu.ps;
 
+import android.animation.Animator;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Canvas;
@@ -27,9 +28,7 @@ import android.util.AttributeSet;
 import android.view.View;
 import android.view.animation.Interpolator;
 
-import com.nineoldandroids.animation.Animator;
-
-import com.quinny898.library.persistentsearch.R;
+import com.d3m0li5h3r.apps.weather.R;
 
 import static com.balysv.materialmenu.ps.MaterialMenuDrawable.DEFAULT_COLOR;
 import static com.balysv.materialmenu.ps.MaterialMenuDrawable.DEFAULT_PRESSED_DURATION;
@@ -107,14 +106,14 @@ public class MaterialMenuView extends View implements MaterialMenu {
     }
 
     @Override
-    public void setState(IconState state) {
-        currentState = state;
-        drawable.setIconState(state);
+    public IconState getState() {
+        return drawable.getIconState();
     }
 
     @Override
-    public IconState getState() {
-        return drawable.getIconState();
+    public void setState(IconState state) {
+        currentState = state;
+        drawable.setIconState(state);
     }
 
     @Override
@@ -207,9 +206,9 @@ public class MaterialMenuView extends View implements MaterialMenu {
     private void adjustDrawablePadding() {
         if (drawable != null) {
             drawable.setBounds(
-                0, 0,
-                drawable.getIntrinsicWidth() + getPaddingLeft() + getPaddingRight(),
-                drawable.getIntrinsicHeight() + getPaddingTop() + getPaddingBottom()
+                    0, 0,
+                    drawable.getIntrinsicWidth() + getPaddingLeft() + getPaddingRight(),
+                    drawable.getIntrinsicHeight() + getPaddingTop() + getPaddingBottom()
             );
         }
     }
@@ -219,6 +218,17 @@ public class MaterialMenuView extends View implements MaterialMenu {
     }
 
     private static class SavedState extends BaseSavedState {
+        public static final Creator<SavedState> CREATOR = new Creator<SavedState>() {
+            @Override
+            public SavedState createFromParcel(Parcel in) {
+                return new SavedState(in);
+            }
+
+            @Override
+            public SavedState[] newArray(int size) {
+                return new SavedState[size];
+            }
+        };
         protected IconState state;
 
         SavedState(Parcelable superState) {
@@ -235,17 +245,5 @@ public class MaterialMenuView extends View implements MaterialMenu {
             super.writeToParcel(out, flags);
             out.writeString(state.name());
         }
-
-        public static final Creator<SavedState> CREATOR = new Creator<SavedState>() {
-            @Override
-            public SavedState createFromParcel(Parcel in) {
-                return new SavedState(in);
-            }
-
-            @Override
-            public SavedState[] newArray(int size) {
-                return new SavedState[size];
-            }
-        };
     }
 }
