@@ -1,10 +1,12 @@
 package com.d3m0li5h3r.apps.weather;
 
 import android.Manifest;
+import android.app.ProgressDialog;
 import android.content.pm.PackageManager;
 import android.graphics.Typeface;
 import android.location.Location;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.design.widget.Snackbar;
@@ -77,19 +79,36 @@ public class MainActivity extends AppCompatActivity
     private ImageView searchClearView;
     private MaterialMenuView searchLogoView;
 
-    private LinearLayout contentView;
+    private ProgressDialog progressDialog;
+
+    private LinearLayout parentLayout;
 
     private GoogleApiClient googleApiClient;
 
     private WeatherData weatherData;
     private WeatherApi weatherApi;
 
+    private final Handler handler = new Handler();
+    private final Runnable locationTimeoutRunnable = new Runnable() {
+        @Override
+        public void run() {
+            progressDialog.dismiss();
+            Snackbar.make(cityNameView, R.string.location_timeout,
+                    Snackbar.LENGTH_LONG)
+                    .show();
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        contentView = (LinearLayout) findViewById(R.id.content);
+        parentLayout = (LinearLayout) findViewById(R.id.content);
+
+        progressDialog = new ProgressDialog(this);
+        progressDialog.setIndeterminate(true);
+        progressDialog.setCancelable(false);
 
         searchTextView = (TextView) findViewById(R.id.searchHint);
         searchView = (EditText) findViewById(R.id.searchBox);
@@ -112,6 +131,7 @@ public class MainActivity extends AppCompatActivity
         visibilityView = (TextView) findViewById(R.id.visibility);
         visibilityLevelView = (TextView) findViewById(R.id.visibilityLevel);
 
+
         Typeface weatherFont = Typeface.createFromAsset(this.getAssets(), "weather.ttf");
         iconView.setTypeface(weatherFont);
 
@@ -123,11 +143,14 @@ public class MainActivity extends AppCompatActivity
             @Override
             public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
                 if (EditorInfo.IME_ACTION_SEARCH == actionId) {
+
+                    progressDialog.setMessage(getString(R.string.fetching_weather));
+                    if (!progressDialog.isShowing())
+                        progressDialog.show();
+
                     Call<WeatherData> call = weatherApi
                             .getWeatherInformation(searchView.getText().toString());
                     call.enqueue(MainActivity.this);
-
-                    return true;
                 }
 
                 return false;
@@ -216,15 +239,22 @@ public class MainActivity extends AppCompatActivity
     public void onConnected(@Nullable Bundle bundle) {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
-            Snackbar.make(cityNameView, R.string.permission_location_denied, Snackbar.LENGTH_LONG)
+            Snackbar.make(cityNameView, R.string.permission_location_denied,
+                    Snackbar.LENGTH_LONG)
                     .show();
 
             return;
         }
 
+        progressDialog.setMessage(getString(R.string.fetching_location));
+        progressDialog.show();
+
         LocationRequest locationRequest = LocationRequest.create();
         locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-        locationRequest.setInterval(100);
+        locationRequest.setInterval(Constants.INTERVAL_LOCATION_UPDATE);
+        locationRequest.setExpirationDuration(Constants.INTERVAL_EXPIRATION);
+
+        handler.postDelayed(locationTimeoutRunnable, Constants.INTERVAL_EXPIRATION);
 
         LocationServices.FusedLocationApi.requestLocationUpdates(googleApiClient, locationRequest,
                 this);
@@ -240,13 +270,19 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void onLocationChanged(Location location) {
-        if (null != location) {
+        if (null != location && location.getAccuracy() <= Constants.LIMIT_ACCURACY) {
             double latitude = location.getLatitude();
             double longitude = location.getLongitude();
+
+            handler.removeCallbacks(locationTimeoutRunnable);
 
             LocationServices.FusedLocationApi.removeLocationUpdates(googleApiClient, this);
 
             googleApiClient.disconnect();
+
+            progressDialog.setMessage(getString(R.string.fetching_weather));
+            if (!progressDialog.isShowing())
+                progressDialog.show();
 
             Call<WeatherData> call = weatherApi.getWeatherInformation(latitude, longitude);
             call.enqueue(this);
@@ -255,23 +291,31 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void onResponse(Call<WeatherData> call, Response<WeatherData> response) {
-        setProgressBarIndeterminateVisibility(false);
+        if (progressDialog.isShowing())
+            progressDialog.dismiss();
 
         weatherData = response.body();
 
         if (404 == weatherData.getCode()) {
-            Snackbar.make(cityNameView, weatherData.getMessage(), Snackbar.LENGTH_INDEFINITE).show();
+            Snackbar.make(cityNameView, weatherData.getMessage(), Snackbar.LENGTH_INDEFINITE)
+                    .show();
             return;
         }
 
         updateUI();
+
+        if (progressDialog.isShowing())
+            progressDialog.dismiss();
     }
 
     @Override
     public void onFailure(Call<WeatherData> call, Throwable t) {
-        setProgressBarIndeterminateVisibility(false);
+        if (progressDialog.isShowing())
+            progressDialog.dismiss();
 
-        Snackbar.make(cityNameView, t.getLocalizedMessage(), Snackbar.LENGTH_INDEFINITE).show();
+        Snackbar.make(cityNameView, R.string.generic_exception,
+                Snackbar.LENGTH_INDEFINITE)
+                .show();
     }
 
     private void checkPermissions() {
@@ -318,7 +362,7 @@ public class MainActivity extends AppCompatActivity
         dateView.setText(dateFormat.format(calendar.getTime()));
 
         isDayTime = Utils.isDay(weatherData.getDate());
-        Utils.changeBackground(isDayTime, contentView);
+        Utils.changeBackground(isDayTime, parentLayout);
 
         cityNameView.setText(String.format(getString(R.string.cityName),
                 weatherData.getName(), sys.getCountry()));

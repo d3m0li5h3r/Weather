@@ -6,4 +6,9 @@
     <dimen name="margin_view">8dp</dimen>
     <dimen name="margin_view_double">16dp</dimen>
     <dimen name="margin_left_large">16dp</dimen>
+    <dimen name="margin_horizontal_search">56dp</dimen>
+    <dimen name="height_width_clear">24dp</dimen>
+    <dimen name="margin_end_clear">12dp</dimen>
+
+    <dimen name="size_text_standard">16sp</dimen>
 </resources>

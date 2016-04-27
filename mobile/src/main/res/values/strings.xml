@@ -1,15 +1,17 @@
 <resources>
     <string name="app_name">Weather</string>
-    <string name="weather">Today\'s Weather</string>
 
     <string name="wind">Wind</string>
     <string name="humidity">Humidity</string>
     <string name="pressure">Pressure</string>
     <string name="visibility">Visibility</string>
     <string name="hint_search_city">Enter city name</string>
-    <string name="please_wait">Please wait while initial setup is being completed…</string>
 
-    <string name="permission_location_denied">Location permission denied. Please use to search button.</string>
+    <string name="generic_exception">Something went wrong. Please try again.</string>
+    <string name="location_timeout">Could not get current location. Please search your city manually.</string>
+    <string name="permission_location_denied">Location permission denied. Please search your city manually.</string>
+    <string name="fetching_location">Fetching location…</string>
+    <string name="fetching_weather">Fetching weather details…</string>
 
     <string name="cityName">%1$s, %2$s</string>
     <string name="date">%1$s UTC</string>
